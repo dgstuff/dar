@@ -109,7 +109,7 @@ const typewriter = (element: HTMLElement, text: string, speed: number = 30): Pro
 
 // --- AI Interaction ---
 const getAiResponse = async (prompt: string) => {
-    const apiKey = AIzaSyCBO35uVCAdlYPayTgwj4sKNPDQegM65e8
+    const apiKey = 'AIzaSyCBO35uVCAdlYPayTgwj4sKNPDQegM65e8'
     if (!apiKey) {
         console.error('API key is not set.');
         return 'Sorry, the application is not configured correctly.';
