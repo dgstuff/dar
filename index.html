@@ -1,4 +1,4 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -9,6 +9,13 @@
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script type="importmap">
+    {
+      "imports": {
+        "@google/genai": "https://esm.run/@google/genai"
+      }
+    }
+    </script>
     <style>
         :root {
             --bg-color: #020a17;
@@ -20,12 +27,13 @@
 
         body {
             font-family: var(--font-family);
+            background: var(--bg-color);
         }
 
         #main-container {
             border: 2px solid transparent;
             border-radius: 1rem;
-            transition: border-color 0.5s ease-in-out, box-shadow 0.5s ease-in-out;
+            transition: border-color 0.5s ease-in-out, box-shadow 0.5s ease-in-out, background 0.5s ease-in-out;
         }
 
         .assistant-active #main-container {
@@ -58,6 +66,7 @@
             white-space: pre-wrap;
             word-wrap: break-word;
             margin-bottom: 1rem;
+            text-align: left;
         }
         #response-text code {
             font-family: 'Courier New', Courier, monospace;
@@ -74,6 +83,8 @@
             margin-left: 2rem;
             margin-top: 1rem;
             margin-bottom: 1rem;
+        }
+        #response-text ul {
             list-style-type: disc;
         }
          #response-text ol {
@@ -86,9 +97,11 @@
             margin-top: 1.5rem;
             margin-bottom: 1rem;
             font-weight: 700;
+            text-align: left;
         }
         #response-text p {
             margin-bottom: 1rem;
+            text-align: left;
         }
         #response-text p:last-child {
             margin-bottom: 0;
@@ -102,6 +115,7 @@
             padding-left: 1rem;
             margin: 1rem 0;
             color: #a0d8f0;
+            text-align: left;
         }
 
     </style>
@@ -112,7 +126,7 @@
         
         <!-- Response Area -->
         <div class="w-full flex-grow flex items-center justify-center overflow-hidden">
-             <div class="w-full h-full overflow-y-auto flex items-center justify-center">
+             <div class="w-full h-full overflow-y-auto flex flex-col justify-start">
                 <div id="response-text" class="text-2xl tracking-wider leading-relaxed transition-opacity duration-500 ease-in-out">Say "Start" to activate</div>
             </div>
         </div>
