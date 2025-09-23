@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -8,6 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
         :root {
             --bg-color: #020a17;
@@ -47,18 +48,63 @@
             transition: opacity 0.5s ease-in-out;
         }
 
+        /* Markdown Styles */
+        #response-text pre {
+            background-color: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--secondary-glow);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            margin-bottom: 1rem;
+        }
+        #response-text code {
+            font-family: 'Courier New', Courier, monospace;
+            background-color: rgba(74, 144, 226, 0.2);
+            padding: 0.2em 0.4em;
+            border-radius: 3px;
+        }
+        #response-text pre code {
+             background-color: transparent;
+             padding: 0;
+        }
+        #response-text ul, #response-text ol {
+            text-align: left;
+            margin-left: 2rem;
+            margin-top: 1rem;
+            margin-bottom: 1rem;
+            list-style-type: disc;
+        }
+         #response-text ol {
+            list-style-type: decimal;
+        }
+        #response-text li {
+            margin-bottom: 0.5rem;
+        }
+        #response-text h1, #response-text h2, #response-text h3 {
+            margin-top: 1.5rem;
+            margin-bottom: 1rem;
+            font-weight: 700;
+        }
+        #response-text p {
+            margin-bottom: 1rem;
+        }
+        #response-text p:last-child {
+            margin-bottom: 0;
+        }
+        #response-text a {
+            color: var(--primary-glow);
+            text-decoration: underline;
+        }
+        #response-text blockquote {
+            border-left: 4px solid var(--secondary-glow);
+            padding-left: 1rem;
+            margin: 1rem 0;
+            color: #a0d8f0;
+        }
+
     </style>
-<script type="importmap">
-{
-  "imports": {
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.20.0",
-    "react/": "https://aistudiocdn.com/react@^19.1.1/",
-    "react": "https://aistudiocdn.com/react@^19.1.1",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.1.1/"
-  }
-}
-</script>
-<link rel="stylesheet" href="/index.css">
 </head>
 <body class="bg-[#020a17] text-[#e0f7fa] flex justify-center items-center text-center overflow-hidden h-screen p-4">
 
@@ -67,7 +113,7 @@
         <!-- Response Area -->
         <div class="w-full flex-grow flex items-center justify-center overflow-hidden">
              <div class="w-full h-full overflow-y-auto flex items-center justify-center">
-                <p id="response-text" class="text-2xl tracking-wider leading-relaxed transition-opacity duration-500 ease-in-out">Say "Start" to activate</p>
+                <div id="response-text" class="text-2xl tracking-wider leading-relaxed transition-opacity duration-500 ease-in-out">Say "Start" to activate</div>
             </div>
         </div>
         
@@ -93,6 +139,5 @@
     </div>
 
     <script type="module" src="index.tsx"></script>
-<script type="module" src="/index.tsx"></script>
 </body>
 </html>
