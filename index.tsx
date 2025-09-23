@@ -110,7 +110,7 @@ const typewriter = (element: HTMLElement, text: string, speed: number = 30): Pro
 
 // --- AI Interaction ---
 const getAiResponse = async (prompt: string) => {
-    const API_KEY = process.env.API_KEY;
+    const API_KEY = 'AIzaSyAorHGjlcSxaMATvOltATtfk1b9IjjYLmo'
     if (!API_KEY) {
         console.error("API_KEY environment variable not set.");
         return "Sorry, the application is not configured correctly. Missing API Key.";
