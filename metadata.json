@@ -1,0 +1,7 @@
+{
+  "name": "DAR Voice Assistant",
+  "description": "A minimal, elegant voice assistant with a JARVIS-inspired UI, built as a completely static site with vanilla HTML, CSS, and JavaScript.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}

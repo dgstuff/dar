@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DAR - Voice Assistant</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --bg-color: #020a17;
+            --primary-glow: #00d9ff;
+            --secondary-glow: #4a90e2;
+            --text-color: #e0f7fa;
+            --font-family: 'Orbitron', sans-serif;
+        }
+
+        body {
+            font-family: var(--font-family);
+        }
+
+        #main-container {
+            border: 2px solid transparent;
+            border-radius: 1rem;
+            transition: border-color 0.5s ease-in-out, box-shadow 0.5s ease-in-out;
+        }
+
+        .assistant-active #main-container {
+            border-color: rgba(0, 217, 255, 0.4);
+            box-shadow: 0 0 25px 5px rgba(0, 217, 255, 0.2);
+        }
+
+        #response-text {
+             transition: text-shadow 0.5s ease-in-out;
+        }
+        
+        .assistant-active #response-text {
+            text-shadow: 0 0 5px var(--primary-glow), 0 0 10px var(--primary-glow);
+        }
+        
+        .widget-card {
+            background: rgba(14, 27, 49, 0.8);
+            border: 1px solid var(--secondary-glow);
+            box-shadow: 0 0 15px 2px rgba(74, 144, 226, 0.3);
+            transition: opacity 0.5s ease-in-out;
+        }
+
+    </style>
+<script type="importmap">
+{
+  "imports": {
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.20.0",
+    "react/": "https://aistudiocdn.com/react@^19.1.1/",
+    "react": "https://aistudiocdn.com/react@^19.1.1",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.1.1/"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+<body class="bg-[#020a17] text-[#e0f7fa] flex justify-center items-center text-center overflow-hidden h-screen p-4">
+
+    <div id="main-container" class="flex flex-col items-center justify-between h-full w-full max-w-3xl p-8 space-y-4">
+        
+        <!-- Response Area -->
+        <div class="w-full flex-grow flex items-center justify-center overflow-hidden">
+             <div class="w-full h-full overflow-y-auto flex items-center justify-center">
+                <p id="response-text" class="text-2xl tracking-wider leading-relaxed transition-opacity duration-500 ease-in-out">Say "Start" to activate</p>
+            </div>
+        </div>
+        
+        <!-- Visualizer -->
+        <div class="w-full h-24 flex-shrink-0">
+            <canvas id="visualizer" class="w-full h-full"></canvas>
+        </div>
+        
+        <!-- Widgets Area -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 w-full flex-shrink-0 pt-4">
+            <!-- Timer -->
+            <div id="timer-card" class="widget-card p-6 rounded-lg flex-col items-center justify-center space-y-2 hidden">
+                <span class="text-xl uppercase tracking-widest text-gray-400">Timer</span>
+                <span id="timer-display" class="time-display text-6xl font-bold">00:00</span>
+            </div>
+            <!-- Stopwatch -->
+            <div id="stopwatch-card" class="widget-card p-6 rounded-lg flex-col items-center justify-center space-y-2 hidden">
+                <span class="text-xl uppercase tracking-widest text-gray-400">Stopwatch</span>
+                <span id="stopwatch-display" class="time-display text-6xl font-bold">00:00</span>
+            </div>
+        </div>
+
+    </div>
+
+    <script type="module" src="index.tsx"></script>
+<script type="module" src="/index.tsx"></script>
+</body>
+</html>
