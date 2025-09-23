@@ -109,13 +109,12 @@ const typewriter = (element: HTMLElement, text: string, speed: number = 30): Pro
 
 // --- AI Interaction ---
 const getAiResponse = async (prompt: string) => {
-    const apiKey = process.env.API_KEY;
     if (!apiKey) {
         console.error('API key is not set.');
-        return 'Sorry, the application is not configured correctly.';
+        return 'oh shit my bad bro i forgot to put my api key in the code lmao sorry.';
     }
     const model = 'gemini-2.5-flash';
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=AIzaSyBCOnimTNPV1rUK8hIOOH5tU61onqYlYUs`;
     const requestBody = {
         contents: [{ parts: [{ text: prompt }] }],
         systemInstruction: {
