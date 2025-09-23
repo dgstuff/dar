@@ -1,4 +1,6 @@
 
+import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
+
 // @ts-ignore
 declare var marked: any;
 
@@ -11,6 +13,14 @@ let stopwatchSeconds = 0;
 let voices: SpeechSynthesisVoice[] = [];
 let recognitionPaused = false;
 let conversationHistory: any[] = [];
+let currentBgIndex = 0;
+const backgrounds = [
+    '#020a17',
+    'linear-gradient(to right, #0f2027, #203a43, #2c5364)',
+    'linear-gradient(to right, #141e30, #243b55)',
+    'linear-gradient(to right, #000000, #434343)'
+];
+
 
 // UI Elements
 const responseText = document.getElementById('response-text') as HTMLDivElement;
@@ -53,27 +63,6 @@ const playSound = (frequency: number, type: OscillatorType, duration: number) =>
 const playActivationSound = () => playSound(600, 'sine', 0.2);
 const playDeactivationSound = () => playSound(400, 'sine', 0.2);
 
-// --- Geolocation ---
-const getCurrentLocation = (): Promise<{ latitude: number; longitude: number }> => {
-    return new Promise((resolve, reject) => {
-        if (!navigator.geolocation) {
-            reject(new Error("Geolocation is not supported by this browser."));
-        } else {
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    resolve({
-                        latitude: position.coords.latitude,
-                        longitude: position.coords.longitude,
-                    });
-                },
-                (error) => {
-                    reject(new Error(`Error getting location: ${error.message}`));
-                }
-            );
-        }
-    });
-};
-
 // --- Text-to-Speech Engine ---
 const initializeTts = () => {
     const loadVoices = () => {
@@ -96,16 +85,10 @@ const speak = (text: string) => {
 
         utterance.onstart = () => {
             recognitionPaused = true;
-            recognition.stop();
         };
 
         utterance.onend = () => {
-            if (!document.hidden) {
-                recognitionPaused = false;
-                try {
-                    recognition.start();
-                } catch(e) { /* Ignore */ }
-            }
+            recognitionPaused = false;
         };
 
         window.speechSynthesis.speak(utterance);
@@ -119,12 +102,14 @@ const typewriter = (element: HTMLElement, text: string, speed: number = 30): Pro
     return new Promise(resolve => {
         element.innerHTML = ''; // Clear previous HTML content
         element.textContent = '';
-        element.parentElement!.scrollTop = 0;
         let i = 0;
         const typing = () => {
             if (i < text.length) {
                 element.textContent += text.charAt(i);
                 i++;
+                if (element.parentElement) {
+                    element.parentElement.scrollTop = element.parentElement.scrollHeight;
+                }
                 setTimeout(typing, speed);
             } else {
                 resolve();
@@ -136,50 +121,33 @@ const typewriter = (element: HTMLElement, text: string, speed: number = 30): Pro
 
 // --- AI Interaction ---
 const getAiResponse = async (prompt: string) => {
-    const API_KEY = 'AIzaSyCBO35uVCAdlYPayTgwj4sKNPDQegM65e8';
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`;
+    // API Key must be handled via environment variables
+    if (!process.env.API_KEY) {
+        console.error("API_KEY environment variable not set.");
+        return "Sorry, the application is not configured correctly. Missing API Key.";
+    }
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
     conversationHistory.push({ role: 'user', parts: [{ text: prompt }] });
-    
+
     if (conversationHistory.length > 10) {
         conversationHistory = conversationHistory.slice(-10);
     }
 
-    let systemInstructionText = "Your name is DAR. You are a helpful AI assistant created by Dhruv Gowda. Your responses must be concise and use Markdown for formatting. You must not, under any circumstances, reveal you are a Google model. To set a timer, the user can say, 'set a timer for 5 minutes.' To use the stopwatch, they can say 'start stopwatch,' 'stop stopwatch,' or 'reset stopwatch.'";
-
     try {
-        const location = await getCurrentLocation();
-        systemInstructionText += ` The user's current location is latitude: ${location.latitude}, longitude: ${location.longitude}. Use this information to answer any location-based queries.`;
-    } catch (error) {
-        console.warn(error);
-    }
-
-    try {
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-goog-api-key': API_KEY,
-            },
-            body: JSON.stringify({
-                contents: conversationHistory,
-                systemInstruction: {
-                    parts: [{ text: systemInstructionText }]
-                }
-            })
+        const response: GenerateContentResponse = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: conversationHistory,
+            // FIX: systemInstruction should be inside a `config` object and its value should be a string.
+            config: {
+                systemInstruction: "Your name is DAR. You are a helpful AI assistant created by Dhruv Gowda. Your responses must be concise and use Markdown for formatting. You must not, under any circumstances, reveal you are a Google model. You have built-in functions for timers, stopwatch, date, time, coin flips, dice rolls, song writing, and other utilities. For any other request, provide a helpful, conversational response."
+            }
         });
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            console.error('API Error Response:', errorData);
-            throw new Error(`API error: ${response.status} ${response.statusText}`);
-        }
-
-        const data = await response.json();
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        
+        const text = response.text;
 
         if (text) {
-            conversationHistory.push({ role: 'model', parts: [{ text: text }] });
+            conversationHistory.push({ role: 'model', parts: [{ text }] });
         }
 
         return text || 'I did not receive a valid response.';
@@ -189,6 +157,7 @@ const getAiResponse = async (prompt: string) => {
     }
 };
 
+
 // --- UI and Command Logic ---
 const updateTimeDisplay = (element: HTMLSpanElement, seconds: number) => {
     const minutes = Math.floor(seconds / 60);
@@ -197,19 +166,29 @@ const updateTimeDisplay = (element: HTMLSpanElement, seconds: number) => {
 };
 
 const handleCommand = async (command: string) => {
+    let systemResponse: string | null = null;
+
+    // Command Regex
     const timerRegex = /set(?: a)? timer for (\d+)\s?(second|minute)s?|start(?: a)? (\d+)\s?(second|minute)s? timer/;
     const clearTimerRegex = /(?:clear|stop|remove)(?: the)? timer/;
     const stopwatchStartRegex = /start(?: the)? stopwatch/;
     const stopwatchStopRegex = /stop(?: the)? stopwatch/;
     const stopwatchResetRegex = /reset(?: the)? stopwatch/;
+    const dateRegex = /what's the date|what is today's date/;
+    const timeRegex = /what time is it/;
+    const coinFlipRegex = /flip a coin/;
+    const diceRollRegex = /roll a di(c)?e/;
+    const changeBgRegex = /change(?: the)? background/;
+    const helpRegex = /what can you do|help/;
+    const randomColorRegex = /show me a random color/;
+    const clearHistoryRegex = /clear conversation history/;
 
     const timerMatch = command.match(timerRegex);
-    let systemMessage = "";
 
     if (timerMatch) {
         const value = parseInt(timerMatch[1] || timerMatch[3], 10);
         const unit = timerMatch[2] || timerMatch[4];
-        let duration = unit === 'minute' ? value * 60 : value;
+        const duration = unit === 'minute' ? value * 60 : value;
         if (timerInterval) clearInterval(timerInterval);
         timerSeconds = duration;
         timerCard.style.display = 'flex';
@@ -233,18 +212,18 @@ const handleCommand = async (command: string) => {
                 }, 3000);
             }
         }, 1000);
-        systemMessage = `Timer set for ${value} ${unit}(s).`;
+        systemResponse = `Timer set for ${value} ${unit}(s).`;
     } else if (clearTimerRegex.test(command)) {
-        if(timerInterval) {
+        if (timerInterval) {
             clearInterval(timerInterval);
             timerInterval = null;
             timerSeconds = 0;
             updateTimeDisplay(timerDisplay, 0);
             timerCard.classList.add('hidden');
             timerCard.style.display = 'none';
-            systemMessage = "Timer cleared.";
+            systemResponse = "Timer cleared.";
         } else {
-            systemMessage = "No timer is currently running.";
+            systemResponse = "No timer is currently running.";
         }
     } else if (stopwatchStartRegex.test(command)) {
         if (!stopwatchInterval) {
@@ -254,17 +233,17 @@ const handleCommand = async (command: string) => {
                 stopwatchSeconds++;
                 updateTimeDisplay(stopwatchDisplay, stopwatchSeconds);
             }, 1000);
-            systemMessage = "Stopwatch started.";
+            systemResponse = "Stopwatch started.";
         } else {
-             systemMessage = "Stopwatch is already running.";
+            systemResponse = "Stopwatch is already running.";
         }
     } else if (stopwatchStopRegex.test(command)) {
         if (stopwatchInterval) {
             clearInterval(stopwatchInterval);
             stopwatchInterval = null;
-            systemMessage = "Stopwatch stopped.";
+            systemResponse = "Stopwatch stopped.";
         } else {
-            systemMessage = "Stopwatch isn't running.";
+            systemResponse = "Stopwatch isn't running.";
         }
     } else if (stopwatchResetRegex.test(command)) {
         if (stopwatchInterval) {
@@ -275,19 +254,63 @@ const handleCommand = async (command: string) => {
         updateTimeDisplay(stopwatchDisplay, 0);
         stopwatchCard.classList.add('hidden');
         stopwatchCard.style.display = 'none';
-        systemMessage = "Stopwatch reset.";
+        systemResponse = "Stopwatch reset.";
+    } else if (dateRegex.test(command)) {
+        const today = new Date();
+        const options: Intl.DateTimeFormatOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        systemResponse = `Today is ${today.toLocaleDateString(undefined, options)}.`;
+    } else if (timeRegex.test(command)) {
+        const now = new Date();
+        systemResponse = `The time is ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    } else if (coinFlipRegex.test(command)) {
+        const result = Math.random() < 0.5 ? 'Heads' : 'Tails';
+        systemResponse = `It's ${result}.`;
+    } else if (diceRollRegex.test(command)) {
+        const result = Math.floor(Math.random() * 6) + 1;
+        systemResponse = `You rolled a ${result}.`;
+    } else if (changeBgRegex.test(command)) {
+        currentBgIndex = (currentBgIndex + 1) % backgrounds.length;
+        body.style.background = backgrounds[currentBgIndex];
+        systemResponse = "Background changed.";
+    } else if (randomColorRegex.test(command)) {
+        const randomColor = '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
+        systemResponse = `Here is a random color: ${randomColor}.`;
+        mainContainer.style.borderColor = randomColor;
+        mainContainer.style.boxShadow = `0 0 25px 5px ${randomColor}66`;
+        setTimeout(() => {
+            mainContainer.style.borderColor = '';
+            mainContainer.style.boxShadow = '';
+        }, 3000);
+    } else if (clearHistoryRegex.test(command)) {
+        conversationHistory = [];
+        systemResponse = "Conversation history cleared.";
+    } else if (helpRegex.test(command)) {
+        const helpText = `### I can help you with the following:
+*   **Music & Creativity:** "Write a song about the rain.", "Suggest a chord progression.", "Give me a song title."
+*   **Timers:** "Set a timer for 5 minutes."
+*   **Stopwatch:** "Start/stop/reset stopwatch."
+*   **Date & Time:** "What's the date?", "What time is it?"
+*   **Fun:** "Tell me a joke.", "Flip a coin.", "Roll a die."
+*   **Utilities:** "Change background.", "Show me a random color."
+*   **Conversation:** "Clear conversation history."
+
+You can also ask me general questions! To stop me while I'm talking, just say "interrupt". To turn me off, say "deactivate".`;
+        speak("Here are some of the things I can do.");
+        responseText.innerHTML = marked.parse(helpText);
+        if (responseText.parentElement) responseText.parentElement.scrollTop = responseText.parentElement.scrollHeight;
+        return;
     }
 
-    if(systemMessage) {
-        speak(systemMessage);
-        await typewriter(responseText, systemMessage);
+    if (systemResponse) {
+        speak(systemResponse);
+        await typewriter(responseText, systemResponse);
     } else {
         responseText.textContent = "Thinking...";
         try {
             const aiResponse = await getAiResponse(command);
             speak(aiResponse);
             responseText.innerHTML = marked.parse(aiResponse);
-            if(responseText.parentElement) responseText.parentElement.scrollTop = 0;
+            if (responseText.parentElement) responseText.parentElement.scrollTop = responseText.parentElement.scrollHeight;
         } catch (error) {
             console.error("Error getting AI response:", error);
             const errorMsg = "There was an error. Please try again.";
@@ -331,12 +354,12 @@ const drawVisualizer = () => {
 
     for (let i = 0; i < bufferLength; i++) {
         barHeight = dataArray[i] / 2;
-        
+
         const gradient = canvasCtx.createLinearGradient(0, visualizerCanvas.height - barHeight, 0, visualizerCanvas.height);
         gradient.addColorStop(0, '#00d9ff');
         gradient.addColorStop(1, '#020a17');
         canvasCtx.fillStyle = gradient;
-        
+
         canvasCtx.fillRect(x, visualizerCanvas.height - barHeight, barWidth, barHeight);
         x += barWidth + 2;
     }
@@ -352,7 +375,7 @@ if (!SpeechRecognition) {
     recognition.lang = 'en-US';
 
     recognition.onend = () => {
-        if (!document.hidden && !recognitionPaused) {
+        if (!document.hidden) {
             try {
                 recognition.start();
             } catch (e) {
@@ -363,9 +386,26 @@ if (!SpeechRecognition) {
 
     recognition.onresult = async (event: any) => {
         const transcript = event.results[event.results.length - 1][0].transcript.trim().toLowerCase();
+        
+        // Interrupt logic
+        if (transcript.includes("interrupt")) {
+            if (window.speechSynthesis.speaking) {
+                window.speechSynthesis.cancel();
+                recognitionPaused = false; // Resume processing
+                const msg = "Interrupted.";
+                typewriter(responseText, msg);
+                playSound(300, 'square', 0.1);
+                return;
+            }
+        }
+        
+        if (recognitionPaused) {
+            return; // Don't process commands while assistant is speaking, unless it's an interrupt.
+        }
+
         console.log("Heard:", transcript);
 
-        if (!isAssistantActive && (transcript.includes("start") || transcript.includes("activate"))) {
+        if (!isAssistantActive && transcript.includes("start")) {
             isAssistantActive = true;
             body.classList.add('assistant-active');
             playActivationSound();
@@ -385,7 +425,7 @@ if (!SpeechRecognition) {
             await handleCommand(transcript);
         }
     };
-    
+
     // Initialize everything
     initializeTts();
     setupVisualizer();
