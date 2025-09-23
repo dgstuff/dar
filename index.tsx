@@ -106,9 +106,16 @@ const typewriter = (element: HTMLElement, text: string, speed: number = 30): Pro
         typing();
     });
 };
---Interact
+
+// --- AI Interaction ---
+const getAiResponse = async (prompt: string) => {
+    const apiKey = AIzaSyCBO35uVCAdlYPayTgwj4sKNPDQegM65e8
+    if (!apiKey) {
+        console.error('API key is not set.');
+        return 'Sorry, the application is not configured correctly.';
+    }
     const model = 'gemini-2.5-flash';
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=AIzaSyBCOnimTNPV1rUK8hIOOH5tU61onqYlYUs`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
     const requestBody = {
         contents: [{ parts: [{ text: prompt }] }],
         systemInstruction: {
