@@ -106,13 +106,7 @@ const typewriter = (element: HTMLElement, text: string, speed: number = 30): Pro
         typing();
     });
 };
-
-// --- AI Interaction ---
-const getAiResponse = async (prompt: string) => {
-    if (!apiKey) {
-        console.error('API key is not set.');
-        return 'oh shit my bad bro i forgot to put my api key in the code lmao sorry.';
-    }
+--Interact
     const model = 'gemini-2.5-flash';
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=AIzaSyBCOnimTNPV1rUK8hIOOH5tU61onqYlYUs`;
     const requestBody = {
