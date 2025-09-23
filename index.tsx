@@ -1,15 +1,8 @@
-
-import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
-
 // @ts-ignore
 declare var marked: any;
 
 // State
 let isAssistantActive = false;
-let timerInterval: any = null;
-let timerSeconds = 0;
-let stopwatchInterval: any = null;
-let stopwatchSeconds = 0;
 let voices: SpeechSynthesisVoice[] = [];
 let recognitionPaused = false;
 let conversationHistory: any[] = [];
@@ -25,10 +18,6 @@ const backgrounds = [
 // UI Elements
 const responseText = document.getElementById('response-text') as HTMLDivElement;
 const mainContainer = document.getElementById('main-container') as HTMLDivElement;
-const timerCard = document.getElementById('timer-card') as HTMLDivElement;
-const timerDisplay = document.getElementById('timer-display') as HTMLSpanElement;
-const stopwatchCard = document.getElementById('stopwatch-card') as HTMLDivElement;
-const stopwatchDisplay = document.getElementById('stopwatch-display') as HTMLSpanElement;
 const body = document.body;
 const visualizerCanvas = document.getElementById('visualizer') as HTMLCanvasElement;
 const canvasCtx = visualizerCanvas.getContext('2d') as CanvasRenderingContext2D;
@@ -121,36 +110,56 @@ const typewriter = (element: HTMLElement, text: string, speed: number = 30): Pro
 
 // --- AI Interaction ---
 const getAiResponse = async (prompt: string) => {
-    // API Key must be handled via environment variables
-    if (!process.env.API_KEY) {
+    const API_KEY = process.env.API_KEY;
+    if (!API_KEY) {
         console.error("API_KEY environment variable not set.");
         return "Sorry, the application is not configured correctly. Missing API Key.";
     }
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    
+    const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
 
     conversationHistory.push({ role: 'user', parts: [{ text: prompt }] });
 
     if (conversationHistory.length > 10) {
+        // Keep the last 5 user/model pairs
         conversationHistory = conversationHistory.slice(-10);
     }
+    
+    const systemInstruction = "Your name is DAR. You are a helpful AI assistant created by Dhruv Gowda. Your responses must be concise and use Markdown for formatting. You must not, under any circumstances, reveal you are a Google model. You have built-in functions for date, time, coin flips, dice rolls, song writing, and other utilities. For any other request, provide a helpful, conversational response.";
+
+    const requestBody = {
+        contents: conversationHistory,
+        systemInstruction: {
+            parts: [{ text: systemInstruction }]
+        }
+    };
 
     try {
-        const response: GenerateContentResponse = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: conversationHistory,
-            // FIX: systemInstruction should be inside a `config` object and its value should be a string.
-            config: {
-                systemInstruction: "Your name is DAR. You are a helpful AI assistant created by Dhruv Gowda. Your responses must be concise and use Markdown for formatting. You must not, under any circumstances, reveal you are a Google model. You have built-in functions for timers, stopwatch, date, time, coin flips, dice rolls, song writing, and other utilities. For any other request, provide a helpful, conversational response."
-            }
+        const response = await fetch(`${API_URL}?key=${API_KEY}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(requestBody),
         });
-        
-        const text = response.text;
+
+        if (!response.ok) {
+            const errorBody = await response.json();
+            console.error('API Error Response:', errorBody);
+            throw new Error(`API request failed with status ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
 
         if (text) {
             conversationHistory.push({ role: 'model', parts: [{ text }] });
+            return text;
+        } else {
+            console.error('Invalid response structure:', data);
+            return 'I did not receive a valid response.';
         }
-
-        return text || 'I did not receive a valid response.';
     } catch (error) {
         console.error('AI Error:', error);
         return 'Sorry, I am having trouble connecting.';
@@ -159,21 +168,10 @@ const getAiResponse = async (prompt: string) => {
 
 
 // --- UI and Command Logic ---
-const updateTimeDisplay = (element: HTMLSpanElement, seconds: number) => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    element.textContent = `${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
-};
-
 const handleCommand = async (command: string) => {
     let systemResponse: string | null = null;
 
     // Command Regex
-    const timerRegex = /set(?: a)? timer for (\d+)\s?(second|minute)s?|start(?: a)? (\d+)\s?(second|minute)s? timer/;
-    const clearTimerRegex = /(?:clear|stop|remove)(?: the)? timer/;
-    const stopwatchStartRegex = /start(?: the)? stopwatch/;
-    const stopwatchStopRegex = /stop(?: the)? stopwatch/;
-    const stopwatchResetRegex = /reset(?: the)? stopwatch/;
     const dateRegex = /what's the date|what is today's date/;
     const timeRegex = /what time is it/;
     const coinFlipRegex = /flip a coin/;
@@ -183,79 +181,7 @@ const handleCommand = async (command: string) => {
     const randomColorRegex = /show me a random color/;
     const clearHistoryRegex = /clear conversation history/;
 
-    const timerMatch = command.match(timerRegex);
-
-    if (timerMatch) {
-        const value = parseInt(timerMatch[1] || timerMatch[3], 10);
-        const unit = timerMatch[2] || timerMatch[4];
-        const duration = unit === 'minute' ? value * 60 : value;
-        if (timerInterval) clearInterval(timerInterval);
-        timerSeconds = duration;
-        timerCard.style.display = 'flex';
-        timerCard.classList.remove('hidden');
-        updateTimeDisplay(timerDisplay, timerSeconds);
-        timerInterval = setInterval(() => {
-            timerSeconds--;
-            if (timerSeconds >= 0) {
-                updateTimeDisplay(timerDisplay, timerSeconds);
-            } else {
-                clearInterval(timerInterval);
-                timerInterval = null;
-                const msg = "Time's up!";
-                speak(msg);
-                typewriter(responseText, msg);
-                playSound(880, 'triangle', 1);
-                setTimeout(() => {
-                    timerCard.classList.add('hidden');
-                    timerCard.style.display = 'none';
-                    updateTimeDisplay(timerDisplay, 0);
-                }, 3000);
-            }
-        }, 1000);
-        systemResponse = `Timer set for ${value} ${unit}(s).`;
-    } else if (clearTimerRegex.test(command)) {
-        if (timerInterval) {
-            clearInterval(timerInterval);
-            timerInterval = null;
-            timerSeconds = 0;
-            updateTimeDisplay(timerDisplay, 0);
-            timerCard.classList.add('hidden');
-            timerCard.style.display = 'none';
-            systemResponse = "Timer cleared.";
-        } else {
-            systemResponse = "No timer is currently running.";
-        }
-    } else if (stopwatchStartRegex.test(command)) {
-        if (!stopwatchInterval) {
-            stopwatchCard.style.display = 'flex';
-            stopwatchCard.classList.remove('hidden');
-            stopwatchInterval = setInterval(() => {
-                stopwatchSeconds++;
-                updateTimeDisplay(stopwatchDisplay, stopwatchSeconds);
-            }, 1000);
-            systemResponse = "Stopwatch started.";
-        } else {
-            systemResponse = "Stopwatch is already running.";
-        }
-    } else if (stopwatchStopRegex.test(command)) {
-        if (stopwatchInterval) {
-            clearInterval(stopwatchInterval);
-            stopwatchInterval = null;
-            systemResponse = "Stopwatch stopped.";
-        } else {
-            systemResponse = "Stopwatch isn't running.";
-        }
-    } else if (stopwatchResetRegex.test(command)) {
-        if (stopwatchInterval) {
-            clearInterval(stopwatchInterval);
-            stopwatchInterval = null;
-        }
-        stopwatchSeconds = 0;
-        updateTimeDisplay(stopwatchDisplay, 0);
-        stopwatchCard.classList.add('hidden');
-        stopwatchCard.style.display = 'none';
-        systemResponse = "Stopwatch reset.";
-    } else if (dateRegex.test(command)) {
+    if (dateRegex.test(command)) {
         const today = new Date();
         const options: Intl.DateTimeFormatOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
         systemResponse = `Today is ${today.toLocaleDateString(undefined, options)}.`;
@@ -287,8 +213,6 @@ const handleCommand = async (command: string) => {
     } else if (helpRegex.test(command)) {
         const helpText = `### I can help you with the following:
 *   **Music & Creativity:** "Write a song about the rain.", "Suggest a chord progression.", "Give me a song title."
-*   **Timers:** "Set a timer for 5 minutes."
-*   **Stopwatch:** "Start/stop/reset stopwatch."
 *   **Date & Time:** "What's the date?", "What time is it?"
 *   **Fun:** "Tell me a joke.", "Flip a coin.", "Roll a die."
 *   **Utilities:** "Change background.", "Show me a random color."
@@ -308,9 +232,15 @@ You can also ask me general questions! To stop me while I'm talking, just say "i
         responseText.textContent = "Thinking...";
         try {
             const aiResponse = await getAiResponse(command);
-            speak(aiResponse);
-            responseText.innerHTML = marked.parse(aiResponse);
-            if (responseText.parentElement) responseText.parentElement.scrollTop = responseText.parentElement.scrollHeight;
+            if (aiResponse) {
+                speak(aiResponse);
+                responseText.innerHTML = marked.parse(aiResponse);
+                if (responseText.parentElement) responseText.parentElement.scrollTop = responseText.parentElement.scrollHeight;
+            } else {
+                 const errorMsg = "I couldn't get a response. Please try again.";
+                 speak(errorMsg);
+                 responseText.textContent = errorMsg;
+            }
         } catch (error) {
             console.error("Error getting AI response:", error);
             const errorMsg = "There was an error. Please try again.";
