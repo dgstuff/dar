@@ -9,13 +9,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script type="importmap">
-    {
-      "imports": {
-        "@google/genai": "https://esm.run/@google/genai"
-      }
-    }
-    </script>
     <style>
         :root {
             --bg-color: #020a17;
@@ -136,20 +129,6 @@
             <canvas id="visualizer" class="w-full h-full"></canvas>
         </div>
         
-        <!-- Widgets Area -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 w-full flex-shrink-0 pt-4">
-            <!-- Timer -->
-            <div id="timer-card" class="widget-card p-6 rounded-lg flex-col items-center justify-center space-y-2 hidden">
-                <span class="text-xl uppercase tracking-widest text-gray-400">Timer</span>
-                <span id="timer-display" class="time-display text-6xl font-bold">00:00</span>
-            </div>
-            <!-- Stopwatch -->
-            <div id="stopwatch-card" class="widget-card p-6 rounded-lg flex-col items-center justify-center space-y-2 hidden">
-                <span class="text-xl uppercase tracking-widest text-gray-400">Stopwatch</span>
-                <span id="stopwatch-display" class="time-display text-6xl font-bold">00:00</span>
-            </div>
-        </div>
-
     </div>
 
     <script type="module" src="index.tsx"></script>
