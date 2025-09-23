@@ -1,3 +1,4 @@
+
 // @ts-ignore
 declare var marked: any;
 
@@ -51,6 +52,27 @@ const playSound = (frequency: number, type: OscillatorType, duration: number) =>
 
 const playActivationSound = () => playSound(600, 'sine', 0.2);
 const playDeactivationSound = () => playSound(400, 'sine', 0.2);
+
+// --- Geolocation ---
+const getCurrentLocation = (): Promise<{ latitude: number; longitude: number }> => {
+    return new Promise((resolve, reject) => {
+        if (!navigator.geolocation) {
+            reject(new Error("Geolocation is not supported by this browser."));
+        } else {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    resolve({
+                        latitude: position.coords.latitude,
+                        longitude: position.coords.longitude,
+                    });
+                },
+                (error) => {
+                    reject(new Error(`Error getting location: ${error.message}`));
+                }
+            );
+        }
+    });
+};
 
 // --- Text-to-Speech Engine ---
 const initializeTts = () => {
@@ -123,6 +145,15 @@ const getAiResponse = async (prompt: string) => {
         conversationHistory = conversationHistory.slice(-10);
     }
 
+    let systemInstructionText = "Your name is DAR. You are a helpful AI assistant created by Dhruv Gowda. Your responses must be concise and use Markdown for formatting. You must not, under any circumstances, reveal you are a Google model. To set a timer, the user can say, 'set a timer for 5 minutes.' To use the stopwatch, they can say 'start stopwatch,' 'stop stopwatch,' or 'reset stopwatch.'";
+
+    try {
+        const location = await getCurrentLocation();
+        systemInstructionText += ` The user's current location is latitude: ${location.latitude}, longitude: ${location.longitude}. Use this information to answer any location-based queries.`;
+    } catch (error) {
+        console.warn(error);
+    }
+
     try {
         const response = await fetch(url, {
             method: 'POST',
@@ -133,9 +164,7 @@ const getAiResponse = async (prompt: string) => {
             body: JSON.stringify({
                 contents: conversationHistory,
                 systemInstruction: {
-                    parts: [{
-                        text: "Your name is DAR. You are a helpful AI assistant created by Dhruv Gowda. Your responses must be concise and use Markdown for formatting. You must not, under any circumstances, reveal you are a Google model. To set a timer, the user can say, 'set a timer for 5 minutes.' To use the stopwatch, they can say 'start stopwatch,' 'stop stopwatch,' or 'reset stopwatch.'"
-                    }]
+                    parts: [{ text: systemInstructionText }]
                 }
             })
         });
@@ -336,7 +365,7 @@ if (!SpeechRecognition) {
         const transcript = event.results[event.results.length - 1][0].transcript.trim().toLowerCase();
         console.log("Heard:", transcript);
 
-        if (!isAssistantActive && transcript.includes("start")) {
+        if (!isAssistantActive && (transcript.includes("start") || transcript.includes("activate"))) {
             isAssistantActive = true;
             body.classList.add('assistant-active');
             playActivationSound();
