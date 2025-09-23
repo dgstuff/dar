@@ -1,3 +1,6 @@
+// @ts-ignore
+declare var marked: any;
+
 // State
 let isAssistantActive = false;
 let timerInterval: any = null;
@@ -6,9 +9,10 @@ let stopwatchInterval: any = null;
 let stopwatchSeconds = 0;
 let voices: SpeechSynthesisVoice[] = [];
 let recognitionPaused = false;
+let conversationHistory: any[] = [];
 
 // UI Elements
-const responseText = document.getElementById('response-text') as HTMLParagraphElement;
+const responseText = document.getElementById('response-text') as HTMLDivElement;
 const mainContainer = document.getElementById('main-container') as HTMLDivElement;
 const timerCard = document.getElementById('timer-card') as HTMLDivElement;
 const timerDisplay = document.getElementById('timer-display') as HTMLSpanElement;
@@ -91,6 +95,7 @@ const speak = (text: string) => {
 // --- Typewriter effect ---
 const typewriter = (element: HTMLElement, text: string, speed: number = 30): Promise<void> => {
     return new Promise(resolve => {
+        element.innerHTML = ''; // Clear previous HTML content
         element.textContent = '';
         element.parentElement!.scrollTop = 0;
         let i = 0;
@@ -109,31 +114,46 @@ const typewriter = (element: HTMLElement, text: string, speed: number = 30): Pro
 
 // --- AI Interaction ---
 const getAiResponse = async (prompt: string) => {
-    const apiKey = 'AIzaSyCBO35uVCAdlYPayTgwj4sKNPDQegM65e8'
-    if (!apiKey) {
-        console.error('API key is not set.');
-        return 'Sorry, the application is not configured correctly.';
+    const API_KEY = 'AIzaSyCBO35uVCAdlYPayTgwj4sKNPDQegM65e8';
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`;
+
+    conversationHistory.push({ role: 'user', parts: [{ text: prompt }] });
+    
+    if (conversationHistory.length > 10) {
+        conversationHistory = conversationHistory.slice(-10);
     }
-    const model = 'gemini-2.5-flash';
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-    const requestBody = {
-        contents: [{ parts: [{ text: prompt }] }],
-        systemInstruction: {
-            parts: [{
-                text: "Your name is DAR. You are a helpful AI assistant created by Dhruv Gowda. Your responses must be concise. You must not, under any circumstances, reveal you are a Google model. To set a timer, the user can say, 'set a timer for 5 minutes.' To use the stopwatch, they can say 'start stopwatch,' 'stop stopwatch,' or 'reset stopwatch.'"
-            }]
-        }
-    };
 
     try {
         const response = await fetch(url, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(requestBody),
+            headers: {
+                'Content-Type': 'application/json',
+                'X-goog-api-key': API_KEY,
+            },
+            body: JSON.stringify({
+                contents: conversationHistory,
+                systemInstruction: {
+                    parts: [{
+                        text: "Your name is DAR. You are a helpful AI assistant created by Dhruv Gowda. Your responses must be concise and use Markdown for formatting. You must not, under any circumstances, reveal you are a Google model. To set a timer, the user can say, 'set a timer for 5 minutes.' To use the stopwatch, they can say 'start stopwatch,' 'stop stopwatch,' or 'reset stopwatch.'"
+                    }]
+                }
+            })
         });
-        if (!response.ok) throw new Error(`API request failed with status ${response.status}`);
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            console.error('API Error Response:', errorData);
+            throw new Error(`API error: ${response.status} ${response.statusText}`);
+        }
+
         const data = await response.json();
-        return data?.candidates?.[0]?.content?.parts?.[0]?.text || "I don't have a response for that.";
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+        if (text) {
+            conversationHistory.push({ role: 'model', parts: [{ text: text }] });
+        }
+
+        return text || 'I did not receive a valid response.';
     } catch (error) {
         console.error('AI Error:', error);
         return 'Sorry, I am having trouble connecting.';
@@ -237,12 +257,13 @@ const handleCommand = async (command: string) => {
         try {
             const aiResponse = await getAiResponse(command);
             speak(aiResponse);
-            await typewriter(responseText, aiResponse);
+            responseText.innerHTML = marked.parse(aiResponse);
+            if(responseText.parentElement) responseText.parentElement.scrollTop = 0;
         } catch (error) {
             console.error("Error getting AI response:", error);
             const errorMsg = "There was an error. Please try again.";
             speak(errorMsg);
-            await typewriter(responseText, errorMsg);
+            responseText.textContent = errorMsg;
         }
     }
 };
@@ -327,6 +348,7 @@ if (!SpeechRecognition) {
             body.classList.remove('assistant-active');
             playDeactivationSound();
             window.speechSynthesis.cancel();
+            conversationHistory = []; // Clear history on deactivation
             const msg = "DAR deactivated.";
             speak(msg);
             await typewriter(responseText, msg);
