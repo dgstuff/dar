@@ -1,0 +1,16 @@
+{
+  "name": "DAR Voice Assistant",
+  "short_name": "DAR",
+  "description": "A minimal, elegant voice assistant with a JARVIS-inspired UI, built as a completely static site with vanilla HTML, CSS, and JavaScript.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#020a17",
+  "theme_color": "#020a17",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
