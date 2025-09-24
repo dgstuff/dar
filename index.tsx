@@ -14,7 +14,7 @@ declare global {
 }
 
 // --- GEMINI API SETUP ---
-const API_KEY = 'AIzaSyD-0PzFNH2WFLdqoAmOoCfLh33Q0FKyMEA'; // Hardcoded API key as requested
+const API_KEY = 'AIzaSyA4Ef_WbRBIuV3qlEyl6p5Y5BWBlQnTLBs'; // Hardcoded API key as requested
 const TEXT_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`;
 const IMAGE_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:generateImages?key=${API_KEY}`;
 
