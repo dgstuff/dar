@@ -4,6 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DAR - Voice Assistant</title>
+
+    <!-- Favicon and PWA Manifest -->
+    <link rel="icon" href="/icon.svg" type="image/svg+xml">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#020a17">
+
+    <!-- Apple Meta Tags -->
+    <link rel="apple-touch-icon" href="/icon.svg">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="DAR Assistant">
+
+    <!-- Generic Meta Tags -->
+    <meta name="application-name" content="DAR Assistant">
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&display=swap" rel="stylesheet">
@@ -119,8 +134,11 @@
         
         <!-- Response Area -->
         <div class="w-full flex-grow flex items-center justify-center overflow-hidden">
-             <div class="w-full h-full overflow-y-auto flex flex-col justify-start">
+             <div id="response-container" class="w-full h-full overflow-y-auto flex flex-col justify-start">
                 <div id="response-text" class="text-2xl tracking-wider leading-relaxed transition-opacity duration-500 ease-in-out">Say "Start" to activate</div>
+            </div>
+            <div id="image-container" class="w-full h-full p-4 hidden items-center justify-center">
+                 <img id="generated-image" class="max-w-full max-h-full object-contain rounded-lg" style="box-shadow: 0 0 25px 5px rgba(0, 217, 255, 0.2);" alt="Generated Image">
             </div>
         </div>
         
@@ -129,6 +147,20 @@
             <canvas id="visualizer" class="w-full h-full"></canvas>
         </div>
         
+        <!-- Widgets Area -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 w-full flex-shrink-0 pt-4">
+            <!-- Timer -->
+            <div id="timer-card" class="widget-card p-6 rounded-lg flex-col items-center justify-center space-y-2 hidden">
+                <span class="text-xl uppercase tracking-widest text-gray-400">Timer</span>
+                <span id="timer-display" class="time-display text-6xl font-bold">00:00</span>
+            </div>
+            <!-- Stopwatch -->
+            <div id="stopwatch-card" class="widget-card p-6 rounded-lg flex-col items-center justify-center space-y-2 hidden">
+                <span class="text-xl uppercase tracking-widest text-gray-400">Stopwatch</span>
+                <span id="stopwatch-display" class="time-display text-6xl font-bold">00:00</span>
+            </div>
+        </div>
+
     </div>
 
     <script type="module" src="index.tsx"></script>
