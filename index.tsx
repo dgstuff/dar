@@ -14,7 +14,7 @@ declare global {
 }
 
 // --- GEMINI API SETUP ---
-const API_KEY = 'AIzaSyA4Ef_WbRBIuV3qlEyl6p5Y5BWBlQnTLBs'; // Hardcoded API key as requested
+const API_KEY = 'AIzaSyD-0PzFNH2WFLdqoAmOoCfLh33Q0FKyMEA'; // Hardcoded API key as requested
 const TEXT_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`;
 const IMAGE_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:generateImages?key=${API_KEY}`;
 
@@ -159,11 +159,9 @@ function speak(text: string, renderMarkdown = true) {
 
         if (chunk) {
             const utterance = new SpeechSynthesisUtterance(chunk);
-            const selectedVoice = voices.find(voice => voice.name.includes('Google') && voice.lang.startsWith('en')) || voices.find(voice => voice.lang.startsWith('en'));
-            
-            if (selectedVoice) {
-                utterance.voice = selectedVoice;
-            }
+            // Let the browser choose the default voice for the language.
+            // This is more reliable across different browsers and platforms.
+            utterance.lang = 'en-US';
 
             utterance.onend = speakNextChunk; // Chain the next chunk
 
@@ -184,6 +182,8 @@ function speak(text: string, renderMarkdown = true) {
 
 // --- GEMINI API INTEGRATION (REST API) ---
 async function getAIResponse() {
+    responseContainer.classList.remove('justify-center');
+    responseContainer.classList.add('justify-start');
     showTextResponse();
     responseText.innerHTML = marked.parse('Thinking... ▋');
 
@@ -221,6 +221,8 @@ async function getAIResponse() {
 }
 
 async function generateImage(prompt: string) {
+    responseContainer.classList.remove('justify-center');
+    responseContainer.classList.add('justify-start');
     showTextResponse();
     const generatingText = `Generating an image of: *${prompt}*...`;
     responseText.innerHTML = marked.parse(generatingText);
@@ -353,6 +355,8 @@ function deactivateAssistant() {
     isAssistantActive = false;
     body.classList.remove('assistant-active');
     showTextResponse();
+    responseContainer.classList.add('justify-center');
+    responseContainer.classList.remove('justify-start');
     responseText.innerHTML = `Say "Start" to activate`;
     // We no longer stop recognition; the onend handler will restart it,
     // so it can continue to listen for the "Start" wake word.
