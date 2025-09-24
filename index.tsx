@@ -159,9 +159,25 @@ function speak(text: string, renderMarkdown = true) {
 
         if (chunk) {
             const utterance = new SpeechSynthesisUtterance(chunk);
-            // Let the browser choose the default voice for the language.
-            // This is more reliable across different browsers and platforms.
-            utterance.lang = 'en-US';
+            utterance.lang = 'en-IN'; // Set language to English (India)
+
+            // Explicitly find and set a voice for improved reliability.
+            if (voices.length > 0) {
+                // Prefer an Indian English voice, but fall back to US English.
+                let selectedVoice = voices.find(v => v.lang === 'en-IN' && v.default);
+                if (!selectedVoice) {
+                    selectedVoice = voices.find(v => v.lang === 'en-IN');
+                }
+                if (!selectedVoice) {
+                    selectedVoice = voices.find(v => v.lang === 'en-US' && v.default);
+                }
+                if (!selectedVoice) {
+                     selectedVoice = voices.find(v => v.lang === 'en-US');
+                }
+                if (selectedVoice) {
+                    utterance.voice = selectedVoice;
+                }
+            }
 
             utterance.onend = speakNextChunk; // Chain the next chunk
 
@@ -270,7 +286,7 @@ let recognition: any;
 if (SpeechRecognition) {
     recognition = new SpeechRecognition();
     recognition.continuous = false;
-    recognition.lang = 'en-US';
+    recognition.lang = 'en-IN'; // Set language to English (India)
     recognition.interimResults = false;
 
     recognition.onresult = (event: any) => {
