@@ -117,30 +117,7 @@ function loadVoices() {
 function speak(text: string, renderMarkdown = true) {
     if (!text) return;
     if (recognition) recognitionPaused = true;
-    window.speechSynthesis.cancel(); 
-
-    const utterance = new SpeechSynthesisUtterance(text);
-    const selectedVoice = voices.find(voice => voice.name.includes('Google') && voice.lang.startsWith('en')) || voices.find(voice => voice.lang.startsWith('en'));
-    if (selectedVoice) {
-        utterance.voice = selectedVoice;
-    }
-
-    utterance.onend = () => {
-        if (recognition) {
-            recognitionPaused = false;
-            // Delay starting recognition slightly to avoid capturing echo
-            setTimeout(() => {
-                if (isAssistantActive) {
-                    try { recognition.start(); } catch(e) { console.error(e) }
-                }
-            }, 200);
-        }
-    };
-    
-    utterance.onerror = (event) => {
-        console.error('SpeechSynthesisUtterance.onerror', event);
-        if (recognition) recognitionPaused = false; // Unpause on error too
-    };
+    window.speechSynthesis.cancel();
 
     if (renderMarkdown) {
         responseText.innerHTML = marked.parse(text);
@@ -148,7 +125,61 @@ function speak(text: string, renderMarkdown = true) {
         responseText.textContent = text;
     }
 
-    window.speechSynthesis.speak(utterance);
+    // Ensure voices are loaded. Sometimes the initial load is slow.
+    if (voices.length === 0) {
+        voices = window.speechSynthesis.getVoices();
+    }
+    
+    // Split text into chunks at sentence endings to avoid TTS length limits.
+    const chunks = text.match(/[^.!?]+[.!?\s]*|[^.!?]+$/g) || [];
+
+    if (chunks.length === 0) {
+        if (recognition) recognitionPaused = false;
+        return;
+    }
+
+    let chunkIndex = 0;
+
+    const speakNextChunk = () => {
+        if (chunkIndex >= chunks.length) {
+            // Finished speaking all chunks, re-enable recognition.
+            if (recognition) {
+                recognitionPaused = false;
+                setTimeout(() => {
+                    if (isAssistantActive) {
+                        try { recognition.start(); } catch (e) { console.error("Recognition restart error:", e); }
+                    }
+                }, 200);
+            }
+            return;
+        }
+
+        const chunk = chunks[chunkIndex].trim();
+        chunkIndex++; // Move to next chunk before speaking
+
+        if (chunk) {
+            const utterance = new SpeechSynthesisUtterance(chunk);
+            const selectedVoice = voices.find(voice => voice.name.includes('Google') && voice.lang.startsWith('en')) || voices.find(voice => voice.lang.startsWith('en'));
+            
+            if (selectedVoice) {
+                utterance.voice = selectedVoice;
+            }
+
+            utterance.onend = speakNextChunk; // Chain the next chunk
+
+            utterance.onerror = (event) => {
+                console.error('SpeechSynthesisUtterance.onerror:', event.error);
+                speakNextChunk(); // Try to continue with the next chunk on error
+            };
+
+            window.speechSynthesis.speak(utterance);
+        } else {
+            // If chunk is empty, just move to the next one.
+            speakNextChunk();
+        }
+    };
+
+    speakNextChunk(); // Start the sequence.
 }
 
 // --- GEMINI API INTEGRATION (REST API) ---
@@ -247,12 +278,28 @@ if (SpeechRecognition) {
     };
 
     recognition.onerror = (event: any) => {
-        console.error("Speech recognition error:", event.error);
+        // These errors are common and non-fatal.
+        // 'no-speech' happens when the user is silent.
+        // 'audio-capture' can happen if the mic is temporarily unavailable.
+        // The 'onend' event will handle restarting the recognition service.
+        if (event.error === 'no-speech' || event.error === 'audio-capture') {
+            return;
+        }
+        console.error(`Speech recognition error: ${event.error}`);
     };
 
     recognition.onend = () => {
-        if (isAssistantActive && !recognitionPaused) {
-            recognition.start();
+        // Always restart recognition unless it was paused for speech synthesis.
+        // This ensures the app is always listening for the wake word.
+        if (!recognitionPaused) {
+            try {
+                recognition.start();
+            } catch (e) {
+                // This can happen if start() is called while it's already starting, which is safe to ignore.
+                if ((e as DOMException).name !== 'InvalidStateError') {
+                     console.error("Recognition restart error:", e);
+                }
+            }
         }
     };
 } else {
@@ -294,7 +341,7 @@ function activateAssistant() {
     setupAudio();
     conversationHistory = [{
         role: 'user',
-        parts: [{ text: 'You are DAR, a voice assistant inspired by JARVIS. Keep your responses concise and to the point.' }]
+        parts: [{ text: 'You are DAR, a voice assistant inspired by JARVIS. Keep responses concise. Use markdown for formatting like lists or bold text when appropriate.' }]
     }, {
         role: 'model',
         parts: [{ text: 'Yes, sir.' }]
@@ -307,9 +354,8 @@ function deactivateAssistant() {
     body.classList.remove('assistant-active');
     showTextResponse();
     responseText.innerHTML = `Say "Start" to activate`;
-    if (recognition) {
-        recognition.stop();
-    }
+    // We no longer stop recognition; the onend handler will restart it,
+    // so it can continue to listen for the "Start" wake word.
     window.speechSynthesis.cancel();
 }
 
@@ -320,3 +366,13 @@ loadVoices();
 
 // Start the visualization loop, it will only draw when active
 visualize();
+
+// Start listening for the wake word as soon as the app loads
+if (recognition) {
+    try {
+        recognition.start();
+    } catch(e) {
+        console.error("Initial recognition start failed:", e);
+        responseText.textContent = "Could not start speech recognition. Please check microphone permissions.";
+    }
+}
