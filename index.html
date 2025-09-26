@@ -63,6 +63,36 @@
             box-shadow: 0 0 15px 2px rgba(74, 144, 226, 0.3);
             transition: opacity 0.5s ease-in-out;
         }
+        
+        #settings-modal label {
+            text-transform: uppercase;
+            font-size: 0.9rem;
+            letter-spacing: 0.1em;
+            color: rgba(224, 247, 250, 0.7);
+        }
+
+        #initial-icon-container svg {
+            width: 100px;
+            height: 100px;
+            opacity: 0.7;
+            filter: drop-shadow(0 0 5px var(--secondary-glow));
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+                filter: drop-shadow(0 0 5px var(--secondary-glow));
+            }
+            50% {
+                transform: scale(1.05);
+                filter: drop-shadow(0 0 15px var(--primary-glow));
+            }
+            100% {
+                transform: scale(1);
+                filter: drop-shadow(0 0 5px var(--secondary-glow));
+            }
+        }
+
 
         /* Markdown Styles */
         #response-text pre {
@@ -130,12 +160,26 @@
 </head>
 <body class="bg-[#020a17] text-[#e0f7fa] flex justify-center items-center text-center overflow-hidden h-screen p-4">
 
-    <div id="main-container" class="flex flex-col items-center justify-between h-full w-full max-w-3xl p-8 space-y-4">
+    <div id="main-container" class="relative flex flex-col items-center justify-between h-full w-full max-w-3xl p-8 space-y-4">
         
         <!-- Response Area -->
         <div class="w-full flex-grow flex items-center justify-center overflow-hidden">
-             <div id="response-container" class="w-full h-full overflow-y-auto flex flex-col justify-center p-4">
-                <div id="response-text" class="text-2xl tracking-wider leading-relaxed transition-opacity duration-500 ease-in-out">Say "Start" to activate</div>
+             <div id="response-container" class="w-full h-full overflow-y-auto flex flex-col justify-center">
+                 <div id="initial-icon-container" class="flex items-center justify-center h-full w-full">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 32 32">
+                      <defs>
+                        <linearGradient id="g1" x1="0" x2="1" y1="0" y2="1">
+                          <stop offset="0" stop-color="#5ee7df"></stop>
+                          <stop offset="0.5" stop-color="#6dd3ff"></stop>
+                          <stop offset="1" stop-color="#9a7cff"></stop>
+                        </linearGradient>
+                      </defs>
+                      <circle cx="16" cy="16" r="15" fill="url(#g1)"></circle>
+                      <path d="M10 21 C10 21 10 11 18 11 C23 11 23 21 18 21 C14.5 21 10 21 10 21 Z" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path>
+                      <path d="M12.5 18 C12.5 18 12.5 13.5 18 13.5 C21 13.5 21 18 18 18 C16 18 12.5 18 12.5 18 Z" fill="rgba(255,255,255,0.12)"></path>
+                    </svg>
+                 </div>
+                <div id="response-text" class="hidden p-4 text-2xl tracking-wider leading-relaxed transition-opacity duration-500 ease-in-out"></div>
             </div>
             <div id="image-container" class="w-full h-full p-4 hidden items-center justify-center">
                  <img id="generated-image" class="max-w-full max-h-full object-contain rounded-lg" style="box-shadow: 0 0 25px 5px rgba(0, 217, 255, 0.2);" alt="Generated Image">
@@ -143,7 +187,7 @@
         </div>
         
         <!-- Visualizer -->
-        <div class="w-full h-24 flex-shrink-0">
+        <div id="visualizer-container" class="w-full h-24 flex-shrink-0">
             <canvas id="visualizer" class="w-full h-full"></canvas>
         </div>
         
@@ -162,6 +206,39 @@
         </div>
 
     </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+        <div class="widget-card p-8 rounded-lg w-full max-w-md space-y-4 relative">
+            <h2 class="text-2xl font-bold uppercase tracking-wider text-center mb-4">Settings</h2>
+            
+            <div class="text-lg text-left">
+                <span class="font-bold uppercase tracking-wider">Speed:</span>
+                <span id="rate-display">1.0</span>
+            </div>
+            <div class="text-lg text-left">
+                <span class="font-bold uppercase tracking-wider">Pitch:</span>
+                <span id="pitch-display">1.0</span>
+            </div>
+            <div class="text-lg text-left">
+                <span class="font-bold uppercase tracking-wider">Visualizer:</span>
+                <span id="visualizer-display">Enabled</span>
+            </div>
+             <div class="text-lg text-left">
+                <span class="font-bold uppercase tracking-wider">Current Voice:</span>
+                <span id="current-voice-display" class="block truncate">Not Set</span>
+            </div>
+            
+            <div class="pt-4 space-y-2">
+                 <h3 class="text-xl font-bold uppercase tracking-wider">Available Voices</h3>
+                 <div id="voice-list" class="h-48 overflow-y-auto text-left p-2 border border-gray-600 rounded">
+                    <!-- Voices will be populated here -->
+                 </div>
+            </div>
+            <p class="text-sm text-gray-400 text-center pt-2">Say "close settings" to exit.</p>
+        </div>
+    </div>
+
 
     <script type="module" src="index.tsx"></script>
 </body>
