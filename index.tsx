@@ -1,11 +1,9 @@
 // @ts-ignore
 declare var marked: any;
 
-// This is needed to make the file a module
+
 export {};
 
-// FIX: This global augmentation now works correctly because the file is a module.
-// This resolves errors on window.SpeechRecognition and window.webkitSpeechRecognition.
 declare global {
     interface Window {
         SpeechRecognition: any;
@@ -14,7 +12,7 @@ declare global {
 }
 
 // --- GEMINI API SETUP ---
-const API_KEY = 'AIzaSyD-0PzFNH2WFLdqoAmOoCfLh33Q0FKyMEA'; // Hardcoded API key as requested
+const API_KEY = 'AIzaSyA2bQvHT9OeD5z_HLxOD2Qa1duTCPjJEDg'; 
 const TEXT_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`;
 const IMAGE_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:generateImages?key=${API_KEY}`;
 
